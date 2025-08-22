@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import BASE_URL from '../api';
 import AdminLayout from '../components/AdminLayout';
 import Swal from 'sweetalert2';
@@ -15,14 +15,6 @@ const AdminOrdersPage = () => {
   const [dateTo, setDateTo] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
-
-  const fetchAll = async () => {
-    await Promise.all([fetchOrders(), fetchStats(), fetchPending()]);
-  };
-
   const fetchOrders = async () => {
     const res = await fetch(`${BASE_URL}/api/admin/orders/orders-with-items`);
     const data = await res.json();
@@ -34,6 +26,21 @@ const AdminOrdersPage = () => {
     const data = await res.json();
     setStats(data || {});
   };
+
+  const fetchPending = async () => {
+    const res = await fetch(`${BASE_URL}/api/admin/orders/pending`);
+    const data = await res.json();
+    setPending(data);
+  };
+
+  // ✅ wrapped in useCallback so it's stable
+  const fetchAll = useCallback(async () => {
+    await Promise.all([fetchOrders(), fetchStats(), fetchPending()]);
+  }, []);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]); // ✅ fixed dependency
 
   const updatePaymentStatus = async (orderId, payment_status) => {
     try {
@@ -48,12 +55,6 @@ const AdminOrdersPage = () => {
       console.error(err);
       Swal.fire('Error', 'Failed to update payment status', 'error');
     }
-  };
-
-  const fetchPending = async () => {
-    const res = await fetch(`${BASE_URL}/api/admin/orders/pending`);
-    const data = await res.json();
-    setPending(data);
   };
 
   const updateOrder = async (id, status, tracking_id, estimated_delivery, courier_name, courier_tracking_url) => {
